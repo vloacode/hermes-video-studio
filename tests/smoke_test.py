@@ -17,8 +17,9 @@ def sh(*args):
 
 
 def vs(*args):
-    r = subprocess.run([sys.executable, "-m", "video_studio", *args], cwd=ROOT,
-                       capture_output=True, text=True, encoding="utf-8")
+    env = dict(os.environ, PYTHONIOENCODING="utf-8")
+    r = subprocess.run([sys.executable, "-m", "video_studio", *args], cwd=ROOT, env=env,
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
     try:
         return json.loads(r.stdout)
     except ValueError:

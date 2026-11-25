@@ -13,7 +13,17 @@ Ayuda de cada uno: vstudio <sub> -h
 """
 
 
+def _utf8_stdio():
+    # En Windows, al redirigir la salida Python usa cp1252 y rompe la n/acentos del JSON.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
+
 def main(argv=None):
+    _utf8_stdio()
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ("-h", "--help"):
         print(USAGE)
