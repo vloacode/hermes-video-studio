@@ -11,11 +11,33 @@ Kit de video **100 % local** y plugin para Hermes Agent:
 | **edit** | 35 comandos de edicion (cortar, quitar silencios, 9:16, texto, subtitulos con Whisper, logos, musica con ducking, LUFS, exportar por plataforma, comprimir a N MB...) y `recipe` para encadenar pasos en una sola llamada. |
 | **autoedit** | Carpeta de clips -> video final: elige los mejores tramos, quita tomas repetidas, transiciones, titulo, musica, y deja `reporte.md`, `timeline.json` y `timeline.edl` (DaVinci/Premiere). |
 
-## Hecho con
-Desarrollado y probado en un PC con Windows 11 usando:
-- **GPU:** Intel Arc Pro B70 (32 GB) para el modelo de vision, ComfyUI y la codificacion.
-- **Modelos:** [llama.cpp](https://github.com/ggml-org/llama.cpp) (`llama-server` en modo router) con Gemma 4 26B / E4B + `mmproj` para vision.
-- **Agente:** Hermes Agent.
+## 🔒 100 % IA local - probado en Intel Arc Pro B70
+
+Este proyecto nacio para trabajar **sin nube**: tus videos, tus fotos y tus modelos nunca
+salen de tu maquina. No hay API keys, no hay costo por uso y funciona sin internet.
+
+**Equipo donde se desarrollo y probo:**
+
+| Componente | Que se uso |
+|---|---|
+| GPU principal | **Intel Arc Pro B70 - 32 GB** (Xe2 / Battlemage) |
+| Motor de modelos | **[llama.cpp](https://github.com/ggml-org/llama.cpp)** compilado con Vulkan, `llama-server` en modo router |
+| Modelo de vision | **Gemma 4 26B-A4B** y **Gemma 4 E4B** (GGUF + `mmproj`) |
+| Transcripcion | **faster-whisper** en CPU (no ocupa VRAM) |
+| Video | **FFmpeg** (decodificacion con `-hwaccel auto`) |
+| Agente | **Hermes Agent** (Nous Research) |
+| Sistema | Windows 11 |
+
+**Por que una Intel Arc:** los 32 GB de VRAM permiten correr un modelo de vision de
+26B junto con su proyector multimodal en una sola tarjeta de precio accesible. El kit esta
+pensado para que el modelo de vision, ComfyUI y la edicion convivan en la misma GPU: la
+transcripcion corre en CPU y el analisis de calidad usa solo FFmpeg + NumPy.
+
+**Que esta verificado:**
+- Analisis de video con el modelo de vision local (fotogramas + audio) desde Hermes.
+- Edicion (recorte, formato 9:16, texto) sobre clips reales 4K de camara.
+- Metricas de calidad calibradas con material real (perfil log, poca profundidad de campo).
+- Prueba completa (`tests/smoke_test.py`) con clips sinteticos.
 
 ## Compatibilidad de GPU
 No depende de Intel: el trabajo de video lo hace FFmpeg y el de vision cualquier servidor
@@ -90,6 +112,22 @@ vstudio autoedit "D:/Videos/tour" --preset reels --title "La Jungla" --music mus
 # Procesar cada subcarpeta pendiente y marcarla " - DONE"
 vstudio autoedit --inbox "D:/Turismo Videos/toedit" --outbox "D:/Turismo Videos/RTP" --mark-done
 ```
+
+## Usar con Claude Code
+Los 3 skills siguen el formato estandar `SKILL.md`, asi que tambien funcionan en
+[Claude Code](https://docs.claude.com/en/docs/claude-code/overview) usando la linea de
+comandos `vstudio` en vez de las herramientas del plugin:
+
+```powershell
+pip install -e "D:/VsCode/Python/hermes-video-studio[captions]"   # instala el comando vstudio
+Copy-Item -Recurse skills/* "$env:USERPROFILE/.claude/skills/"      # skills para todos tus proyectos
+```
+
+Abre Claude Code y pide, por ejemplo: *"analiza este video con video-analyzer"* o
+*"arma un reel con los clips de esta carpeta"*.
+
+Para que **todo** siga siendo local, apunta Claude Code a tu `llama-server` (variables
+`ANTHROPIC_BASE_URL` y `ANTHROPIC_MODEL`); la vision siempre usa `LLAMA_ROUTER`.
 
 ## Configuracion
 | Variable | Default | Para que |
