@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hermes-video-studio"
+version = "0.1.0"
+description = "Analiza, puntua, edita y auto-edita videos localmente con FFmpeg y modelos de vision locales"
+readme = "README.md"
+license = "AGPL-3.0-only"
+license-files = ["LICENSE"]
+authors = [{ name = "vloacode" }]
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "pillow>=10.0", "requests>=2.31"]
+keywords = ["video", "ffmpeg", "hermes-agent", "llama.cpp", "vision", "video-editing"]
+
+[project.optional-dependencies]
+captions = ["faster-whisper>=1.0"]
+
+[project.scripts]
+vstudio = "video_studio.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/vloacode/hermes-video-studio"
+
+[tool.setuptools]
+packages = ["video_studio"]

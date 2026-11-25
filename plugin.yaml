@@ -1,0 +1,20 @@
+name: hermes-video-studio
+version: "0.1.0"
+description: >-
+  Analiza, puntua, edita y auto-edita videos 100% local - FFmpeg + tu modelo de vision en
+  llama.cpp (o cualquier endpoint compatible con OpenAI). Incluye editor de 35 comandos,
+  recetas en una sola llamada, metricas tecnicas de calidad y auto-edicion de carpetas de clips.
+author: vloacode
+license: AGPL-3.0-only
+homepage: https://github.com/vloacode/hermes-video-studio
+tags: [video, ffmpeg, vision, editing, llama.cpp, comfyui, local]
+provides_tools:
+  - video_analyze
+  - video_quality
+  - video_edit
+  - video_recipe
+  - video_autoedit
+python_dependencies:
+  - numpy>=1.24
+  - pillow>=10.0
+  - requests>=2.31
