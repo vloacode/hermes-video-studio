@@ -28,7 +28,12 @@ def _run(args, background=False):
         return json.dumps({"ok": False, "error": str(e)})
     out = (r.stdout or "").strip()
     try:
-        json.loads(out)
+        parsed = json.loads(out)
+        if isinstance(parsed, dict) and parsed.get("ok") is False:
+            parsed["agent_note"] = ("Error de la herramienta: no edites el codigo del plugin. "
+                                    "Corrige tus parametros y reintenta una vez; si sigue "
+                                    "fallando, reporta este error al usuario.")
+            return json.dumps(parsed, ensure_ascii=False)
         return out
     except ValueError:
         return json.dumps({"ok": r.returncode == 0, "output": out[-6000:],
@@ -84,6 +89,28 @@ def video_recipe(params, **kwargs):
 def video_autoedit(params, **kwargs):
     return _run(["autoedit", *_list(params.get("inputs")), *_list(params.get("args"))],
                 params.get("background", True))
+
+
+def video_reframe(params, **kwargs):
+    args = ["reframe", params.get("input", "")]
+    for key, flag in (("output", "-o"), ("aspect", "--aspect"), ("subject", "--subject"),
+                      ("method", "--method"), ("start", "--start"), ("end", "--end"),
+                      ("model", "--model")):
+        if params.get(key) not in (None, ""):
+            args += [flag, str(params[key])]
+    return _run(args + _list(params.get("args")), params.get("background", True))
+
+
+def video_shotcut(params, **kwargs):
+    args = ["shotcut", params.get("input", "")]
+    for key, flag in (("output", "-o"), ("aspect", "--aspect"), ("title", "--title"),
+                      ("title_pos", "--title-pos"), ("title_start", "--title-start"),
+                      ("title_dur", "--title-dur")):
+        if params.get(key) not in (None, ""):
+            args += [flag, str(params[key])]
+    if params.get("open", True):
+        args.append("--open")
+    return _run(args)
 
 
 def video_job_status(params, **kwargs):
@@ -153,6 +180,34 @@ SCHEMAS = [
                                                  "'--music','m.mp3','--duck','--vision']"},
               "background": {"type": "boolean", "description": "default true: devuelve job_id al instante; consulta con video_job_status"}},
              ["inputs"]), video_autoedit),
+    (_schema("video_reframe",
+             "Pasa un video horizontal a vertical (9:16, 4:5, 1:1). Por defecto modo 'flight': "
+             "sigue el vuelo/camara tal como lo hizo el piloto, centrado y suave (ideal dron). "
+             "Con 'subject' el modelo de vision persigue ese sujeto. Guarda <salida>.path.json "
+             "para abrirlo en Shotcut con video_shotcut. Corre en segundo plano (job_id).",
+             {"input": {"type": "string"}, "output": {"type": "string"},
+              "aspect": {"type": "string", "enum": ["9:16", "4:5", "1:1", "3:4"]},
+              "subject": {"type": "string", "description": "que seguir: 'la cascada', 'la orilla de la playa', 'el rio'"},
+              "method": {"type": "string", "enum": ["auto", "flight", "vlm", "saliency", "center"]},
+              "start": {"type": "number"}, "end": {"type": "number"},
+              "model": {"type": "string"},
+              "args": {**ARR, "description": "ej: ['--interval','0.5','--max-speed','0.5']"},
+              "background": {"type": "boolean", "description": "default true"}},
+             ["input"]), video_reframe),
+    (_schema("video_shotcut",
+             "Crea un proyecto editable de Shotcut (.mlt) a partir del .path.json de "
+             "video_reframe (recorte como keyframes de Size, Position & Rotate) o de un video, "
+             "con texto opcional como capa editable, y lo abre en Shotcut para ajustes manuales "
+             "(el usuario puede usar el Motion Tracker de Shotcut). Si no esta instalado, "
+             "devuelve como instalarlo.",
+             {"input": {"type": "string", "description": "<video>.path.json o un video"},
+              "output": {"type": "string"},
+              "aspect": {"type": "string", "enum": ["9:16", "4:5", "1:1", "3:4", "16:9"]},
+              "title": {"type": "string"},
+              "title_pos": {"type": "string", "enum": ["top", "center", "bottom"]},
+              "title_start": {"type": "number"}, "title_dur": {"type": "number"},
+              "open": {"type": "boolean", "description": "default true"}},
+             ["input"]), video_shotcut),
     (_schema("video_job_status",
              "Estado de un trabajo en segundo plano (running/done/failed/cancelled) y su "
              "resultado al terminar. Sin job_id lista los ultimos trabajos. Consulta cada "

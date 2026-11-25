@@ -49,3 +49,10 @@ sigue aunque se corte la conexion del agente. Luego consulta `video_job_status` 
 30-60 s hasta `done`/`failed`. Si el estado es `running`, NO vuelvas a lanzar el trabajo.
 Para detenerlo: `video_job_cancel`. Si se corto la sesion, `video_job_status` sin id
 lista los ultimos trabajos para retomar.
+
+## Si una herramienta falla
+- NO modifiques el codigo del plugin (`video_studio/`, `__init__.py`, skills) ni crees
+  scripts propios para reemplazarlo. Tus cambios se pierden al actualizar y pueden romperlo.
+- Lee el `error` del JSON. Si es un parametro tuyo mal puesto, corrigelo y reintenta UNA vez.
+- Si vuelve a fallar, deten el trabajo y reporta al usuario: la herramienta, los
+  parametros que usaste y el error exacto, para que lo arreglen en el repositorio.

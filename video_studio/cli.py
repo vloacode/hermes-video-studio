@@ -6,6 +6,8 @@ USAGE = """vstudio - hermes-video-studio
   vstudio analyze   VIDEO [VIDEO...] [--question ..] [--criteria ..] [--quality] [--json]
   vstudio quality   VIDEOS|CARPETA [--window 8] [--json] [--report r.md]
   vstudio edit      <comando> VIDEO [...]      (vstudio edit -h  para los 35 comandos)
+  vstudio reframe   VIDEO --aspect 9:16 --subject "la cascada"   (sigue al sujeto)
+  vstudio shotcut   VIDEO.path.json [--title ..] [--open]      (proyecto editable)
   vstudio autoedit  CARPETA [--preset reels] [--target 60] [--music m.mp3] [--vision]
   vstudio doctor
   vstudio job-start <analyze|quality|edit|autoedit> ...   (segundo plano, responde al instante)
@@ -39,6 +41,10 @@ def main(argv=None):
         from .edit import main as m
     elif sub == "autoedit":
         from .autoedit import main as m
+    elif sub == "reframe":
+        from .reframe import main as m
+    elif sub == "shotcut":
+        from .shotcut import main as m
     elif sub == "doctor":
         from .edit import main as m
         rest = ["doctor"]
@@ -49,7 +55,7 @@ def main(argv=None):
             J.run(rest[0], rest[2:] if len(rest) > 1 and rest[1] == "--" else rest[1:])
             return
         if sub == "job-start":
-            if not rest or rest[0] not in ("analyze", "quality", "edit", "autoedit"):
+            if not rest or rest[0] not in ("analyze", "quality", "edit", "autoedit", "reframe"):
                 print(json.dumps({"ok": False, "error": "job-start <analyze|quality|edit|autoedit> ..."}))
                 sys.exit(2)
             res = J.start(rest)

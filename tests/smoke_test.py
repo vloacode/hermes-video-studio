@@ -58,6 +58,23 @@ def main():
     for f in ("report", "timeline", "edl"):
         assert os.path.exists(r[f]), f
     print("autoedit OK")
+
+    mv = os.path.join(OUT, "moving.mp4")
+    sh("-f", "lavfi", "-i", "color=c=0x202020:s=1280x720:d=6:r=30", "-f", "lavfi", "-i",
+       "color=c=white:s=120x120:d=6:r=30", "-filter_complex",
+       "[0][1]overlay=x='100+t*170':y=300", "-c:v", "libx264", "-pix_fmt", "yuv420p", mv)
+    r = vs("reframe", mv, "-o", os.path.join(OUT, "moving_v.mp4"), "--method", "saliency")
+    assert r["ok"] and r["height"] > r["width"], r
+    assert r["pan_range"][1] - r["pan_range"][0] > 0.3, r  # el recorte siguio al cuadro
+    print("reframe OK")
+
+    import xml.etree.ElementTree as ET
+    pj = os.path.splitext(os.path.join(OUT, "moving_v.mp4"))[0] + ".path.json"
+    r = vs("shotcut", pj, "-o", os.path.join(OUT, "proj.mlt"), "--title", "Hola ñ")
+    root = ET.parse(r["project"]).getroot()
+    rect = [p.text for p in root.iter("property") if p.get("name") == "transition.rect"][0]
+    assert r["ok"] and r["keyframes"] >= 5 and rect.count(";") >= 4, r
+    print("shotcut OK")
     print("TODO OK")
 
 

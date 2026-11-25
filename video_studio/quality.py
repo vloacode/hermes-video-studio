@@ -42,11 +42,15 @@ def probe(path):
             "has_audio": any(s["codec_type"] == "audio" for s in d["streams"])}
 
 
-def gray_frames(path, fps, hwaccel=True):
+def gray_frames(path, fps, hwaccel=True, start=None, dur=None):
     """Genera fotogramas en gris (AH x AW, uint8) a `fps` por segundo."""
     cmd = ["ffmpeg", "-v", "error"]
     if hwaccel:
         cmd += ["-hwaccel", "auto"]
+    if start:
+        cmd += ["-ss", f"{start:.3f}"]
+    if dur:
+        cmd += ["-t", f"{dur:.3f}"]
     cmd += ["-i", path, "-vf", f"fps={fps},scale={AW}:{AH},format=gray", "-an",
             "-f", "rawvideo", "-pix_fmt", "gray", "-"]
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)

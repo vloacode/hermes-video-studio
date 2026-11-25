@@ -9,6 +9,8 @@ Kit de video **100 % local** y plugin para Hermes Agent:
 | **analyze** | Entiende videos con tu modelo de vision local: fotogramas por cambio de escena, sin repetidos, transcripcion con tiempos, analisis por tramos, veredicto CUMPLE/NO CUMPLE con criterios, ranking de varias versiones. |
 | **quality** | Puntaje tecnico 0-100: nitidez (zona mas enfocada), exposicion, contraste y **temblor real** de camara (un paneo suave no se penaliza). Encuentra el mejor tramo de cada clip. Solo FFmpeg + NumPy. |
 | **edit** | 35 comandos de edicion (cortar, quitar silencios, 9:16, texto, subtitulos con Whisper, logos, musica con ducking, LUFS, exportar por plataforma, comprimir a N MB...) y `recipe` para encadenar pasos en una sola llamada. |
+| **reframe** | Pasa de horizontal a vertical. Por defecto **sigue el vuelo** (centrado y suave, ideal para dron); con `--subject` el modelo de vision persigue un sujeto. |
+| **shotcut** | Exporta a un proyecto de [Shotcut](https://shotcut.org) (open source) con el recorte como keyframes y el texto como capa editable, y lo abre para ajustar a mano. Instalar: `winget install Meltytech.Shotcut`. |
 | **autoedit** | Carpeta de clips -> video final: elige los mejores tramos, quita tomas repetidas, transiciones, titulo, musica, y deja `reporte.md`, `timeline.json` y `timeline.edl` (DaVinci/Premiere). |
 
 ## 🔒 100 % IA local - probado en Intel Arc Pro B70
@@ -65,7 +67,7 @@ para ver que codificadores trae tu FFmpeg.
 ```bash
 hermes plugins install vloacode/hermes-video-studio --enable
 ```
-Registra 7 herramientas (`video_analyze`, `video_quality`, `video_edit`, `video_recipe`, `video_autoedit`, `video_job_status`, `video_job_cancel`) y 3 skills.
+Registra 9 herramientas (`video_analyze`, `video_quality`, `video_edit`, `video_recipe`, `video_autoedit`, `video_reframe`, `video_shotcut`, `video_job_status`, `video_job_cancel`) y 3 skills.
 
 **Como herramienta de linea de comandos**
 ```bash
@@ -105,6 +107,14 @@ vstudio quality "D:/Videos/tour" --report calidad.md
 
 # Varios pasos en una llamada
 vstudio edit recipe clip.mp4 -o reel.mp4 --steps '[{"op":"trim","start":25,"end":40},{"op":"reframe","aspect":"9:16","mode":"blur"},{"op":"text","text":"Dulces suenos","box":true},{"op":"export","preset":"reels"}]'
+
+# Horizontal -> vertical siguiendo el vuelo (centrado y suave, ideal para dron)
+vstudio reframe dron.mp4 --aspect 9:16 --start 2 --end 14
+# ...o persiguiendo un sujeto con el modelo de vision
+vstudio reframe kayak.mp4 --subject "el kayak rojo"
+
+# Abrir el resultado en Shotcut para ajustar el encuadre a mano (keyframes) y el texto
+vstudio shotcut dron_9x16_smart.path.json --title "La Mina" --open
 
 # Carpeta de clips -> Reel de 60-80 s con musica
 vstudio autoedit "D:/Videos/tour" --preset reels --title "La Jungla" --music musica.mp3 --duck --vision --topic "tour en la selva"

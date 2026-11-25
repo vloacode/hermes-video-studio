@@ -14,6 +14,28 @@ Herramientas: `video_edit` (un comando) y `video_recipe` (varios pasos en una ll
 Sin el plugin: `python -m video_studio edit <comando> ...` o `vstudio edit ...`.
 Nada modifica el original: cada paso crea un archivo nuevo y responde JSON con `ok`.
 
+## Antes de editar: preguntar (brief)
+Si el usuario no lo dijo, pregunta en UN solo mensaje (con opciones por defecto):
+1. Formato: vertical 9:16 (Reels/TikTok/Shorts), horizontal 16:9 (YouTube) o cuadrado.
+2. Tramo/duracion: que parte del video o cuantos segundos.
+3. Sujeto principal a mantener en cuadro (ej. "la cascada", "el bebe", "el rio").
+4. Texto: que dice, donde va (arriba, centro, abajo), desde que segundo y cuanto dura.
+5. Musica (archivo) y si se baja cuando hay voz.
+Si no responde algo, usa: 9:16, el mejor tramo de 15 s, sujeto = lo mas llamativo,
+texto abajo los primeros 4 s, sin musica. Di que valores asumiste.
+
+## Horizontal -> vertical: `video_reframe` + Shotcut
+- Por defecto (`method` flight) respeta el vuelo/camara del piloto: centrado y suave. Es
+  lo correcto para dron y camara en mano. NO persigas rios, caminos ni orillas.
+- Solo si el usuario pide seguir algo concreto que se mueve (una persona, un bote), pasa
+  `subject` y el modelo de vision lo persigue.
+Flujo:
+1. `video_reframe` (tramo con `start`/`end`) -> espera el job -> devuelve `path_file`.
+2. Pregunta si quiere ajustar el encuadre a mano. Si si: `video_shotcut` con ese
+   `path_file` (y el texto del brief): abre Shotcut con el recorte como keyframes y el
+   texto como capa; el usuario ajusta o usa el Motion Tracker de Shotcut y exporta.
+3. Si no: `video_recipe` sobre el video vertical para texto, musica y export.
+
 ## Regla 1 - Pedidos de 2 o mas cambios: SIEMPRE `video_recipe`
 Convierte TODO lo que pidio el usuario en una lista de pasos, sin omitir ninguno:
 ```json
@@ -60,3 +82,10 @@ sigue aunque se corte la conexion del agente. Luego consulta `video_job_status` 
 30-60 s hasta `done`/`failed`. Si el estado es `running`, NO vuelvas a lanzar el trabajo.
 Para detenerlo: `video_job_cancel`. Si se corto la sesion, `video_job_status` sin id
 lista los ultimos trabajos para retomar.
+
+## Si una herramienta falla
+- NO modifiques el codigo del plugin (`video_studio/`, `__init__.py`, skills) ni crees
+  scripts propios para reemplazarlo. Tus cambios se pierden al actualizar y pueden romperlo.
+- Lee el `error` del JSON. Si es un parametro tuyo mal puesto, corrigelo y reintenta UNA vez.
+- Si vuelve a fallar, deten el trabajo y reporta al usuario: la herramienta, los
+  parametros que usaste y el error exacto, para que lo arreglen en el repositorio.
