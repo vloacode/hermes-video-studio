@@ -44,7 +44,7 @@ con todas las versiones para elegir).
   perfil plano/log sin gradear sale con contraste bajo: es normal, no es defecto grave.
 
 ## Trabajos largos (4K, videos de mas de 1 minuto, autoedit)
-Usa `background: true`: la herramienta responde al instante con `job_id` y el trabajo
+Usa `background: true` (en carpetas o varios clips y en autoedit ya es el default): la herramienta responde al instante con `job_id` y el trabajo
 sigue aunque se corte la conexion del agente. Luego consulta `video_job_status` cada
 30-60 s hasta `done`/`failed`. Si el estado es `running`, NO vuelvas a lanzar el trabajo.
 Para detenerlo: `video_job_cancel`. Si se corto la sesion, `video_job_status` sin id

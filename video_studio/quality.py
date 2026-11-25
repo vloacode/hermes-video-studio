@@ -165,7 +165,9 @@ def measure(path, fps=10, window=8.0, weights=None, hwaccel=True):
 
     jerks = np.array([r["jerk"] if r["jerk"] is not None else np.nan for r in rows])
     # temblor suavizado en ~1 s para el puntaje por fotograma
-    k = max(1, int(fps))
+    # ventana de ~1 s, pero nunca mas larga que el clip (si no, np.convolve(..., "same")
+    # devuelve un arreglo del tamano de la ventana y las formas no coinciden)
+    k = max(1, min(int(fps), len(jerks)))
     valid = np.nan_to_num(jerks, nan=0.0)
     cnt = np.convolve(~np.isnan(jerks), np.ones(k), "same")
     smooth = np.convolve(valid, np.ones(k), "same") / np.maximum(cnt, 1)

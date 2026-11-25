@@ -77,7 +77,7 @@ bottom-left, bottom, bottom-right.
 - Si `ok` es false, lee `error`, corrige y reintenta una vez; si vuelve a fallar, informa.
 
 ## Trabajos largos (4K, videos de mas de 1 minuto, autoedit)
-Usa `background: true`: la herramienta responde al instante con `job_id` y el trabajo
+Usa `background: true` (en carpetas o varios clips y en autoedit ya es el default): la herramienta responde al instante con `job_id` y el trabajo
 sigue aunque se corte la conexion del agente. Luego consulta `video_job_status` cada
 30-60 s hasta `done`/`failed`. Si el estado es `running`, NO vuelvas a lanzar el trabajo.
 Para detenerlo: `video_job_cancel`. Si se corto la sesion, `video_job_status` sin id

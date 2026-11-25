@@ -65,7 +65,10 @@ def video_quality(params, **kwargs):
     args = ["quality", *_list(params.get("inputs")), "--json"]
     if params.get("window"):
         args += ["--window", str(params["window"])]
-    return _run(args, params.get("background", False))
+    inputs = _list(params.get("inputs"))
+    # carpetas o varios clips 4K tardan mas que el limite de una llamada: segundo plano
+    many = len(inputs) > 1 or any(os.path.isdir(i) for i in inputs)
+    return _run(args, params.get("background", many))
 
 
 def video_edit(params, **kwargs):
@@ -146,7 +149,8 @@ SCHEMAS = [
              ["videos"]), video_analyze),
     (_schema("video_quality",
              "Puntaje tecnico 0-100 (nitidez, exposicion, contraste, estabilidad), problemas "
-             "detectados y mejor tramo de cada clip. Acepta videos o carpetas.",
+             "detectados y mejor tramo de cada clip. Acepta videos o carpetas. Con una "
+             "carpeta o varios clips corre en segundo plano (job_id) por defecto.",
              {"inputs": {**ARR, "description": "videos o carpetas"},
               "window": {"type": "number", "description": "segundos del mejor tramo"},
               "background": {"type": "boolean", "description": "true = correr en segundo plano y devolver job_id al instante (usa para videos largos/4K)"}},
