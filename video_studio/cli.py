@@ -8,6 +8,8 @@ USAGE = """vstudio - hermes-video-studio
   vstudio edit      <comando> VIDEO [...]      (vstudio edit -h  para los 35 comandos)
   vstudio autoedit  CARPETA [--preset reels] [--target 60] [--music m.mp3] [--vision]
   vstudio doctor
+  vstudio job-start <analyze|quality|edit|autoedit> ...   (segundo plano, responde al instante)
+  vstudio job-status ID | job-cancel ID | jobs
 
 Ayuda de cada uno: vstudio <sub> -h
 """
@@ -40,6 +42,25 @@ def main(argv=None):
     elif sub == "doctor":
         from .edit import main as m
         rest = ["doctor"]
+    elif sub in ("job-start", "job-status", "job-cancel", "jobs", "job-run"):
+        import json
+        from . import jobs as J
+        if sub == "job-run":
+            J.run(rest[0], rest[2:] if len(rest) > 1 and rest[1] == "--" else rest[1:])
+            return
+        if sub == "job-start":
+            if not rest or rest[0] not in ("analyze", "quality", "edit", "autoedit"):
+                print(json.dumps({"ok": False, "error": "job-start <analyze|quality|edit|autoedit> ..."}))
+                sys.exit(2)
+            res = J.start(rest)
+        elif sub == "job-status":
+            res = J.status(rest[0]) if rest else {"ok": False, "error": "falta el id"}
+        elif sub == "job-cancel":
+            res = J.cancel(rest[0]) if rest else {"ok": False, "error": "falta el id"}
+        else:
+            res = J.list_jobs()
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return
     elif sub == "--version":
         from . import __version__
         print(__version__)

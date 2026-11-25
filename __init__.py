@@ -14,7 +14,9 @@ ROOT = Path(__file__).resolve().parent
 TIMEOUT = int(os.environ.get("VIDEO_STUDIO_TIMEOUT", "3600"))
 
 
-def _run(args):
+def _run(args, background=False):
+    if background:
+        args = ["job-start", *args]
     env = dict(os.environ, PYTHONIOENCODING="utf-8")
     try:
         r = subprocess.run([sys.executable, "-m", "video_studio", *args], cwd=str(ROOT),
@@ -51,14 +53,14 @@ def video_analyze(params, **kwargs):
         args.append("--quality")
     if params.get("model"):
         args += ["--model", params["model"]]
-    return _run(args + _list(params.get("extra_args")))
+    return _run(args + _list(params.get("extra_args")), params.get("background", False))
 
 
 def video_quality(params, **kwargs):
     args = ["quality", *_list(params.get("inputs")), "--json"]
     if params.get("window"):
         args += ["--window", str(params["window"])]
-    return _run(args)
+    return _run(args, params.get("background", False))
 
 
 def video_edit(params, **kwargs):
@@ -67,7 +69,7 @@ def video_edit(params, **kwargs):
         args.append(params["input"])
     if params.get("output"):
         args += ["-o", params["output"]]
-    return _run(args + _list(params.get("args")))
+    return _run(args + _list(params.get("args")), params.get("background", False))
 
 
 def video_recipe(params, **kwargs):
@@ -76,11 +78,21 @@ def video_recipe(params, **kwargs):
             steps if isinstance(steps, str) else json.dumps(steps, ensure_ascii=False)]
     if params.get("output"):
         args += ["-o", params["output"]]
-    return _run(args)
+    return _run(args, params.get("background", False))
 
 
 def video_autoedit(params, **kwargs):
-    return _run(["autoedit", *_list(params.get("inputs")), *_list(params.get("args"))])
+    return _run(["autoedit", *_list(params.get("inputs")), *_list(params.get("args"))],
+                params.get("background", True))
+
+
+def video_job_status(params, **kwargs):
+    jid = params.get("job_id")
+    return _run(["job-status", jid] if jid else ["jobs"])
+
+
+def video_job_cancel(params, **kwargs):
+    return _run(["job-cancel", params.get("job_id", "")])
 
 
 # ---------------------------------------------------------------- schemas
@@ -102,13 +114,15 @@ SCHEMAS = [
               "criteria": {"type": "string", "description": "checklist separado por ';'"},
               "quality": {"type": "boolean", "description": "incluir metricas tecnicas"},
               "model": {"type": "string", "description": "modelo con vision (default gemma4-26b)"},
-              "extra_args": {**ARR, "description": "ej: ['--focus','--start','30']"}},
+              "extra_args": {**ARR, "description": "ej: ['--focus','--start','30']"},
+              "background": {"type": "boolean", "description": "true = correr en segundo plano y devolver job_id al instante (usa para videos largos/4K)"}},
              ["videos"]), video_analyze),
     (_schema("video_quality",
              "Puntaje tecnico 0-100 (nitidez, exposicion, contraste, estabilidad), problemas "
              "detectados y mejor tramo de cada clip. Acepta videos o carpetas.",
              {"inputs": {**ARR, "description": "videos o carpetas"},
-              "window": {"type": "number", "description": "segundos del mejor tramo"}},
+              "window": {"type": "number", "description": "segundos del mejor tramo"},
+              "background": {"type": "boolean", "description": "true = correr en segundo plano y devolver job_id al instante (usa para videos largos/4K)"}},
              ["inputs"]), video_quality),
     (_schema("video_edit",
              "Un comando del editor: info, silences, scenes, frames, sheet, loudness, trim, "
@@ -118,7 +132,8 @@ SCHEMAS = [
              "thumbnail, doctor. Nunca modifica el original. Para 2+ pasos usa video_recipe.",
              {"command": {"type": "string"}, "input": {"type": "string"},
               "output": {"type": "string"},
-              "args": {**ARR, "description": "ej: ['--start','5','--end','20']"}},
+              "args": {**ARR, "description": "ej: ['--start','5','--end','20']"},
+              "background": {"type": "boolean", "description": "true = correr en segundo plano y devolver job_id al instante (usa para videos largos/4K)"}},
              ["command"]), video_edit),
     (_schema("video_recipe",
              "Varios pasos de edicion en UNA llamada, en orden; se detiene en el primer error "
@@ -126,7 +141,8 @@ SCHEMAS = [
              "{\"op\":\"reframe\",\"aspect\":\"9:16\",\"mode\":\"blur\"},"
              "{\"op\":\"text\",\"text\":\"Hola\",\"box\":true},{\"op\":\"export\",\"preset\":\"reels\"}]",
              {"input": {"type": "string"}, "output": {"type": "string"},
-              "steps": {"type": "array", "items": {"type": "object"}}},
+              "steps": {"type": "array", "items": {"type": "object"}},
+              "background": {"type": "boolean", "description": "true = correr en segundo plano y devolver job_id al instante (usa para videos largos/4K)"}},
              ["input", "steps"]), video_recipe),
     (_schema("video_autoedit",
              "Carpeta de clips -> video final: mide calidad, elige los mejores tramos, quita "
@@ -134,8 +150,16 @@ SCHEMAS = [
              "timeline.json y timeline.edl. Puede tardar varios minutos.",
              {"inputs": {**ARR, "description": "carpeta(s) o videos"},
               "args": {**ARR, "description": "ej: ['--preset','reels','--target','60',"
-                                                 "'--music','m.mp3','--duck','--vision']"}},
+                                                 "'--music','m.mp3','--duck','--vision']"},
+              "background": {"type": "boolean", "description": "default true: devuelve job_id al instante; consulta con video_job_status"}},
              ["inputs"]), video_autoedit),
+    (_schema("video_job_status",
+             "Estado de un trabajo en segundo plano (running/done/failed/cancelled) y su "
+             "resultado al terminar. Sin job_id lista los ultimos trabajos. Consulta cada "
+             "30-60 s; no repitas el trabajo si sigue en running.",
+             {"job_id": {"type": "string"}}, []), video_job_status),
+    (_schema("video_job_cancel", "Cancela un trabajo en segundo plano y sus procesos FFmpeg.",
+             {"job_id": {"type": "string"}}, ["job_id"]), video_job_cancel),
 ]
 
 

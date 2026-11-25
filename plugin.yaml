@@ -14,6 +14,8 @@ provides_tools:
   - video_edit
   - video_recipe
   - video_autoedit
+  - video_job_status
+  - video_job_cancel
 python_dependencies:
   - numpy>=1.24
   - pillow>=10.0

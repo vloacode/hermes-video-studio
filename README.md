@@ -65,7 +65,7 @@ para ver que codificadores trae tu FFmpeg.
 ```bash
 hermes plugins install vloacode/hermes-video-studio --enable
 ```
-Registra 5 herramientas (`video_analyze`, `video_quality`, `video_edit`, `video_recipe`, `video_autoedit`) y 3 skills.
+Registra 7 herramientas (`video_analyze`, `video_quality`, `video_edit`, `video_recipe`, `video_autoedit`, `video_job_status`, `video_job_cancel`) y 3 skills.
 
 **Como herramienta de linea de comandos**
 ```bash
@@ -113,6 +113,19 @@ vstudio autoedit "D:/Videos/tour" --preset reels --title "La Jungla" --music mus
 vstudio autoedit --inbox "D:/Turismo Videos/toedit" --outbox "D:/Turismo Videos/RTP" --mark-done
 ```
 
+## Trabajos en segundo plano
+Los renders largos (4K, autoedit) corren como **jobs independientes**: si se corta la
+conexion del agente o cierras la terminal, el trabajo sigue y el resultado queda guardado.
+
+```bash
+vstudio job-start autoedit "D:/Videos/tour" --preset reels   # responde al instante con job_id
+vstudio job-status <job_id>                                   # running / done / failed + resultado
+vstudio job-cancel <job_id>                                   # detiene el job y sus FFmpeg
+vstudio jobs                                                  # ultimos trabajos
+```
+En Hermes: `background: true` en cualquier herramienta (en `video_autoedit` es el default)
+y `video_job_status` / `video_job_cancel`.
+
 ## Usar con Claude Code
 Los 3 skills siguen el formato estandar `SKILL.md`, asi que tambien funcionan en
 [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) usando la linea de
@@ -136,7 +149,8 @@ Para que **todo** siga siendo local, apunta Claude Code a tu `llama-server` (var
 | `VIDEO_ANALYZER_MODEL` | `gemma4-26b` | modelo con vision |
 | `VIDEO_ANALYZER_CACHE` | `%LOCALAPPDATA%/video-analyzer` | cache de fotogramas y transcripciones |
 | `VEDIT_ENCODER` | `libx264` | `h264_qsv` (Intel Arc) o `h264_nvenc` (NVIDIA) |
-| `VIDEO_STUDIO_TIMEOUT` | `3600` | tiempo maximo por herramienta en Hermes (s) |
+| `VIDEO_STUDIO_TIMEOUT` | `3600` | tiempo maximo de una llamada sin `background` (s) |
+| `VIDEO_STUDIO_JOBS` | `%LOCALAPPDATA%/video-studio/jobs` | donde se guardan los trabajos en segundo plano |
 
 ## Seguridad
 - Nunca modifica tus archivos originales; todo resultado es un archivo nuevo.

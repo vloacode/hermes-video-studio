@@ -46,3 +46,10 @@ Sin el plugin: `vstudio autoedit <carpeta> [opciones]`.
 3. Al terminar resume con el reporte: clips usados, duracion y ruta. Ofrece ajustar
    (otra musica, mas corto, otro formato) re-ejecutando: el analisis queda en cache.
 4. Si responde "Ningun clip alcanza el nivel minimo", ofrece `--min-label ACEPTABLE`.
+
+## Trabajos largos (4K, videos de mas de 1 minuto, autoedit)
+Usa `background: true`: la herramienta responde al instante con `job_id` y el trabajo
+sigue aunque se corte la conexion del agente. Luego consulta `video_job_status` cada
+30-60 s hasta `done`/`failed`. Si el estado es `running`, NO vuelvas a lanzar el trabajo.
+Para detenerlo: `video_job_cancel`. Si se corto la sesion, `video_job_status` sin id
+lista los ultimos trabajos para retomar.
