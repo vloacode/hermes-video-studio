@@ -18,8 +18,8 @@ import types
 from datetime import datetime
 
 from . import quality as Q
-from .edit import (ENC, PRESETS, VeditError, esc_path, ff, find_font, probe,
-                   reframe_filter)
+from .edit import (ENC, PRESETS, VeditError, ff, find_font, probe, reframe_filter,
+                   stage_assets)
 
 ORDER_LABELS = {"EXCELENTE": 3, "BUENO": 2, "ACEPTABLE": 1, "DESCARTAR": 0}
 
@@ -207,8 +207,9 @@ def render(chosen, a, outdir, tmp):
         with open(tf, "w", encoding="utf-8") as fh:
             fh.write(a.title)
         size = int(h * 0.055)
+        assets = stage_assets(tmp, font=find_font(a.font))
         chain.append(
-            f"{vout}drawtext=fontfile={esc_path(find_font(a.font))}:textfile={esc_path(tf)}:"
+            f"{vout}drawtext=fontfile={assets['font']}:textfile=title.txt:"
             f"fontsize={size}:fontcolor=white:borderw=4:bordercolor=black@0.7:"
             f"x=(w-text_w)/2:y=h*0.12:enable='between(t,0.3,{a.title_seconds})':"
             f"alpha='if(lt(t,0.8),(t-0.3)/0.5,if(gt(t,{a.title_seconds - 0.5}),"
@@ -241,8 +242,11 @@ def render(chosen, a, outdir, tmp):
          "-pix_fmt", "yuv420p"] if ENC == "libx264" else ["-c:v", ENC, "-b:v", br,
                                                           "-pix_fmt", "yuv420p"]
     log("Renderizando video final...")
+    final = os.path.abspath(final)
+    inputs = [os.path.abspath(x) if os.path.exists(x) else x for x in inputs]
     ff(*inputs, "-filter_complex", ";".join(chain), "-map", vout, "-map", aout, *v,
-       "-c:a", "aac", "-b:a", "192k", "-t", f"{total:.3f}", "-movflags", "+faststart", final)
+       "-c:a", "aac", "-b:a", "192k", "-t", f"{total:.3f}", "-movflags", "+faststart", final,
+       cwd=tmp)
     return final, segs, total
 
 

@@ -29,7 +29,7 @@ def vs(*args):
 def main():
     shutil.rmtree(OUT, ignore_errors=True)
     clips = os.path.join(OUT, "clips")
-    os.makedirs(clips)
+    os.makedirs(clips, exist_ok=True)
     good = os.path.join(clips, "a_good.mp4")
     sh("-f", "lavfi", "-i", "testsrc2=s=1280x720:d=8:r=30", "-f", "lavfi", "-i",
        "sine=f=440:d=8", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", good)

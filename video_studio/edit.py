@@ -42,15 +42,51 @@ class VeditError(Exception):
     pass
 
 
-def run(cmd, check=True):
-    r = subprocess.run(cmd, capture_output=True, text=True, errors="replace")
+def run(cmd, check=True, cwd=None):
+    r = subprocess.run(cmd, capture_output=True, text=True, errors="replace", cwd=cwd)
     if check and r.returncode != 0:
         raise VeditError(f"ffmpeg fallo:\n{r.stderr[-2000:]}")
     return r
 
 
-def ff(*args):
-    return run(["ffmpeg", "-hide_banner", "-v", "error", "-y", *args])
+def ff(*args, cwd=None):
+    return run(["ffmpeg", "-hide_banner", "-v", "error", "-y", *args], cwd=cwd)
+
+
+def stage_assets(tmp, **files):
+    """Copia fuente/texto/subtitulos a una carpeta temporal con nombres simples.
+    En Windows las rutas con 'C:' y espacios dentro de un filtro de FFmpeg fallan en
+    silencio; con cwd=tmp y nombres relativos no hay nada que escapar."""
+    out = {}
+    for key, src in files.items():
+        name = key + os.path.splitext(src)[1].lower()
+        shutil.copyfile(src, os.path.join(tmp, name))
+        out[key] = name
+    return out
+
+
+def frame_diff(a, b, t):
+    """Mayor diferencia por bloque entre el fotograma t de dos videos. El ruido de
+    recompresion da valores bajos (<2); un texto o logo nuevo da un bloque alto."""
+    W, H, B = 640, 360, 8
+
+    def grab(p):
+        r = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{t:.3f}", "-i", os.path.abspath(p),
+                            "-frames:v", "1", "-vf", f"scale={W}:{H},format=gray", "-f",
+                            "rawvideo", "-"], capture_output=True)
+        return r.stdout
+    x, y = grab(a), grab(b)
+    if len(x) != W * H or len(y) != W * H:
+        return None
+    best = 0.0
+    for by in range(0, H, B):
+        for bx in range(0, W, B):
+            tot = 0
+            for row in range(by, by + B):
+                i = row * W + bx
+                tot += sum(abs(p - q) for p, q in zip(x[i:i + B], y[i:i + B]))
+            best = max(best, tot / (B * B))
+    return best
 
 
 def probe(path):
@@ -367,11 +403,12 @@ def c_stabilize(a):
     if has_filter("vidstabdetect"):
         with tempfile.TemporaryDirectory() as tmp:
             trf = os.path.join(tmp, "t.trf")
-            run(["ffmpeg", "-hide_banner", "-v", "error", "-y", "-i", a.input, "-vf",
-                 f"vidstabdetect=shakiness={a.shakiness}:result={esc_path(trf)}",
-                 "-f", "null", "-"])
-            ff("-i", a.input, "-vf", f"vidstabtransform=input={esc_path(trf)}:smoothing="
-               f"{a.smoothing},unsharp=5:5:0.8", *venc(), "-c:a", "copy", o)
+            src, o = os.path.abspath(a.input), os.path.abspath(o)
+            run(["ffmpeg", "-hide_banner", "-v", "error", "-y", "-i", src, "-vf",
+                 f"vidstabdetect=shakiness={a.shakiness}:result=t.trf",
+                 "-f", "null", "-"], cwd=tmp)
+            ff("-i", src, "-vf", f"vidstabtransform=input=t.trf:smoothing="
+               f"{a.smoothing},unsharp=5:5:0.8", *venc(), "-c:a", "copy", o, cwd=tmp)
         method = "vidstab"
     else:
         ff("-i", a.input, "-vf", "deshake", *venc(), "-c:a", "copy", o)
@@ -381,30 +418,41 @@ def c_stabilize(a):
 
 # ------------------------------------------------------------------ overlays
 
-def xy(pos, margin):
-    x, y = POS[pos]
-    return x.format(m=margin), y.format(m=margin)
+def xy(pos, margin, text=False):
+    """Expresiones x,y. En overlay W/H = video y w/h = logo; en drawtext W/H/w/h son
+    TODOS el video y el tamano del texto es text_w/text_h."""
+    x, y = (e.format(m=margin) for e in POS[pos])
+    if text:
+        x = x.replace("W-w", "W-text_w").replace("(W-w)", "(W-text_w)")
+        y = y.replace("H-h", "H-text_h").replace("(H-h)", "(H-text_h)")
+    return x, y
 
 
 def c_text(a):
-    o = out_name(a.input, "text", out=a.output)
+    o = os.path.abspath(out_name(a.input, "text", out=a.output))
+    src = os.path.abspath(a.input)
     font = find_font(a.font)
-    with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as fh:
-        fh.write(a.text)
-        tf = fh.name
-    try:
-        x, y = xy(a.position, a.margin)
-        f = (f"drawtext=fontfile={esc_path(font)}:textfile={esc_path(tf)}:fontsize={a.size}:"
+    with tempfile.TemporaryDirectory() as tmp:
+        tf = os.path.join(tmp, "src_text.txt")
+        with open(tf, "w", encoding="utf-8") as fh:
+            fh.write(a.text)
+        assets = stage_assets(tmp, font=font, text=tf)
+        x, y = xy(a.position, a.margin, text=True)
+        f = (f"drawtext=fontfile={assets['font']}:textfile={assets['text']}:fontsize={a.size}:"
              f"fontcolor={a.color}:borderw={a.border}:bordercolor=black@0.8:x={x}:y={y}")
         if a.box:
             f += ":box=1:boxcolor=black@0.5:boxborderw=12"
         s, e = tsec(a.start), tsec(a.end)
         if s is not None or e is not None:
             f += f":enable='between(t,{s or 0},{e if e is not None else 1e9})'"
-        ff("-i", a.input, "-vf", f, *venc(), "-c:a", "copy", o)
-    finally:
-        os.unlink(tf)
-    done(o)
+        ff("-i", src, "-vf", f, *venc(), "-c:a", "copy", o, cwd=tmp)
+    # Verificar que el texto realmente se dibujo
+    t_chk = (s or 0) + 0.5 if (s is not None or e is not None) else min(1.0, probe(src)["duration"] / 2)
+    d = frame_diff(src, o, t_chk)
+    if d is not None and d < 2.5:
+        raise VeditError("FFmpeg termino pero el texto NO aparece en el video "
+                         f"(diferencia {d:.2f}). Revisa --font, --size y --position.")
+    done(o, text_verified=d is not None)
 
 
 def srt_time(t):
@@ -450,12 +498,15 @@ def c_captions(a):
 
 
 def c_subtitles(a):
-    o = out_name(a.input, "subs", out=a.output)
+    o = os.path.abspath(out_name(a.input, "subs", out=a.output))
+    src = os.path.abspath(a.input)
     style = (f"FontName={a.font_name},FontSize={a.size},PrimaryColour=&H00FFFFFF,"
              f"OutlineColour=&H00000000,BorderStyle=1,Outline=2,Shadow=0,Alignment=2,"
              f"MarginV={a.margin_v}")
-    ff("-i", a.input, "-vf", f"subtitles={esc_path(a.subs)}:force_style='{style}'",
-       *venc(), "-c:a", "copy", o)
+    with tempfile.TemporaryDirectory() as tmp:
+        assets = stage_assets(tmp, subs=a.subs)
+        ff("-i", src, "-vf", f"subtitles={assets['subs']}:force_style='{style}'",
+           *venc(), "-c:a", "copy", o, cwd=tmp)
     done(o)
 
 
