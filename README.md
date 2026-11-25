@@ -11,6 +11,27 @@ Kit de video **100 % local** y plugin para Hermes Agent:
 | **edit** | 35 comandos de edicion (cortar, quitar silencios, 9:16, texto, subtitulos con Whisper, logos, musica con ducking, LUFS, exportar por plataforma, comprimir a N MB...) y `recipe` para encadenar pasos en una sola llamada. |
 | **autoedit** | Carpeta de clips -> video final: elige los mejores tramos, quita tomas repetidas, transiciones, titulo, musica, y deja `reporte.md`, `timeline.json` y `timeline.edl` (DaVinci/Premiere). |
 
+## Hecho con
+Desarrollado y probado en un PC con Windows 11 usando:
+- **GPU:** Intel Arc Pro B70 (32 GB) para el modelo de vision, ComfyUI y la codificacion.
+- **Modelos:** [llama.cpp](https://github.com/ggml-org/llama.cpp) (`llama-server` en modo router) con Gemma 4 26B / E4B + `mmproj` para vision.
+- **Agente:** Hermes Agent.
+
+## Compatibilidad de GPU
+No depende de Intel: el trabajo de video lo hace FFmpeg y el de vision cualquier servidor
+compatible con OpenAI, asi que funciona con **NVIDIA, AMD, Intel, Apple Silicon o solo CPU**.
+
+| GPU | Modelo de vision (llama.cpp) | Codificar mas rapido (`VEDIT_ENCODER`) |
+|---|---|---|
+| Intel Arc | Vulkan o SYCL | `h264_qsv` |
+| NVIDIA | CUDA o Vulkan | `h264_nvenc` |
+| AMD | Vulkan o ROCm | `h264_amf` (Windows) |
+| Apple Silicon | Metal | `h264_videotoolbox` |
+| Sin GPU | CPU (lento) | `libx264` (default) |
+
+La decodificacion usa `-hwaccel auto` (cae a CPU si no hay soporte). Corre `vstudio doctor`
+para ver que codificadores trae tu FFmpeg.
+
 ## Requisitos
 - Python 3.10+ y **FFmpeg completo** en el PATH (Windows: `winget install Gyan.FFmpeg`).
 - Para `analyze`: un servidor compatible con OpenAI con un modelo con vision (ej. `llama-server` con Gemma 4 + mmproj).
@@ -29,6 +50,27 @@ Registra 5 herramientas (`video_analyze`, `video_quality`, `video_edit`, `video_
 pip install "hermes-video-studio[captions]"   # o: pip install -e .  desde el repo
 vstudio doctor
 ```
+
+## Verificar que quedo bien instalado
+1. **El plugin esta activo en Hermes:**
+   ```bash
+   hermes plugins list --plain --no-bundled
+   ```
+   Debe aparecer `hermes-video-studio` como `enabled`.
+2. **FFmpeg y extras:** en Hermes pide *"usa video_edit con el comando doctor"*, o en la terminal:
+   ```bash
+   vstudio doctor
+   ```
+   Revisa que `ffmpeg`, `drawtext` y `subtitles` esten en `true` (y `faster_whisper` si vas a subtitular).
+3. **Prueba completa** (genera clips sinteticos y prueba calidad, recetas y auto-edicion):
+   ```bash
+   python tests/smoke_test.py
+   ```
+   Debe terminar con `TODO OK`.
+4. **Vision** (requiere tu servidor de modelos corriendo):
+   ```bash
+   vstudio analyze tests/_out/clips/a_good.mp4 --question "Describe el video"
+   ```
 
 ## Uso rapido
 ```bash
