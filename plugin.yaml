@@ -1,5 +1,5 @@
 name: hermes-video-studio
-version: "0.1.0"
+version: "0.2.0"
 description: >-
   Analiza, puntua, edita y auto-edita videos 100% local - FFmpeg + tu modelo de vision en
   llama.cpp (o cualquier endpoint compatible con OpenAI). Incluye editor de 35 comandos,

@@ -75,6 +75,14 @@ def main():
     rect = [p.text for p in root.iter("property") if p.get("name") == "transition.rect"][0]
     assert r["ok"] and r["keyframes"] >= 5 and rect.count(";") >= 4, r
     print("shotcut OK")
+
+    sk = os.path.join(OUT, "skills_dest")
+    r = vs("install-skills", "--dest", sk)
+    assert r["ok"] and len(r["skills"]) == 3, r
+    for n in r["skills"]:
+        with open(os.path.join(sk, n, "SKILL.md"), encoding="utf-8") as fh:
+            assert "## Sin Hermes" in fh.read(), n
+    print("install-skills OK")
     print("TODO OK")
 
 

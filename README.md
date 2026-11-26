@@ -136,21 +136,46 @@ vstudio jobs                                                  # ultimos trabajos
 En Hermes: `background: true` en cualquier herramienta (en `video_autoedit` es el default)
 y `video_job_status` / `video_job_cancel`.
 
-## Usar con Claude Code
-Los 3 skills siguen el formato estandar `SKILL.md`, asi que tambien funcionan en
-[Claude Code](https://docs.claude.com/en/docs/claude-code/overview) usando la linea de
-comandos `vstudio` en vez de las herramientas del plugin:
+## Usar con OpenCode o Claude Code
+Los 3 skills siguen el formato estandar `SKILL.md` y traen una seccion "Sin Hermes" con
+los comandos `vstudio` equivalentes a cada herramienta, asi que funcionan igual en
+[OpenCode](https://opencode.ai) y [Claude Code](https://docs.claude.com/en/docs/claude-code/overview):
 
 ```powershell
 pip install -e "D:/VsCode/Python/hermes-video-studio[captions]"   # instala el comando vstudio
-Copy-Item -Recurse skills/* "$env:USERPROFILE/.claude/skills/"      # skills para todos tus proyectos
+vstudio install-skills                    # OpenCode  (~/.config/opencode/skills)
+vstudio install-skills --target claude    # Claude Code (~/.claude/skills)
+vstudio install-skills --target all       # OpenCode + Claude Code + ~/.agents/skills
+vstudio install-skills --dest "<proyecto>/.opencode/skills"   # solo para un proyecto
 ```
 
-Abre Claude Code y pide, por ejemplo: *"analiza este video con video-analyzer"* o
-*"arma un reel con los clips de esta carpeta"*.
+Reinicia el agente y pide, por ejemplo: *"usa el skill video-editor y pasa este video a
+vertical"* o *"arma un reel con los clips de esta carpeta"*. Despues de actualizar el
+repo, vuelve a correr `vstudio install-skills`. Para quitarlos: `--remove`.
 
-Para que **todo** siga siendo local, apunta Claude Code a tu `llama-server` (variables
-`ANTHROPIC_BASE_URL` y `ANTHROPIC_MODEL`); la vision siempre usa `LLAMA_ROUTER`.
+Los trabajos largos (autoedit, reframe, quality de carpetas) corren con
+`vstudio job-start` para que la terminal del agente no los corte.
+
+**Todo local:** en OpenCode agrega tu `llama-server` como proveedor en
+`~/.config/opencode/opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "llamacpp": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "llama.cpp local",
+      "options": { "baseURL": "http://127.0.0.1:8765/v1" },
+      "models": { "gemma4-26b": { "name": "Gemma 4 26B" } }
+    }
+  },
+  "model": "llamacpp/gemma4-26b"
+}
+```
+
+Usa el mismo modelo que la vision (`gemma4-26b`) para que el router no cambie de modelo en
+cada analisis. En Claude Code usa las variables `ANTHROPIC_BASE_URL` y `ANTHROPIC_MODEL`.
 
 ## Configuracion
 | Variable | Default | Para que |

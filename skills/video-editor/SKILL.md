@@ -1,7 +1,7 @@
 ---
 name: video-editor
 description: Edita videos locales con FFmpeg - cortar, unir, quitar silencios, velocidad, formato 9:16/1:1, color, estabilizar, texto, subtitulos automaticos, logos, difuminar, musica con ducking, normalizar volumen, exportar para YouTube/Shorts/Reels/TikTok, comprimir, GIF y miniaturas. Usalo cuando el usuario pida editar, recortar, subtitular, adaptar o exportar un video.
-version: 0.1.0
+version: 0.2.0
 author: vloacode
 license: AGPL-3.0-only
 platforms: [windows, linux, macos]
@@ -82,6 +82,30 @@ sigue aunque se corte la conexion del agente. Luego consulta `video_job_status` 
 30-60 s hasta `done`/`failed`. Si el estado es `running`, NO vuelvas a lanzar el trabajo.
 Para detenerlo: `video_job_cancel`. Si se corto la sesion, `video_job_status` sin id
 lista los ultimos trabajos para retomar.
+
+## Sin Hermes (OpenCode, Claude Code, terminal)
+Si no tienes las herramientas `video_*`, usa el comando `vstudio` en la terminal. Todos
+responden JSON; los parametros son los mismos con `--` y `_` -> `-`.
+
+| Herramienta de Hermes | Comando |
+|---|---|
+| `video_analyze` | `vstudio analyze VIDEO --question "..." --json` |
+| `video_quality` | `vstudio quality VIDEOS_O_CARPETA --json` |
+| `video_edit` | `vstudio edit <comando> VIDEO -o SALIDA [...]` (`vstudio edit -h`) |
+| `video_recipe` | `vstudio edit recipe VIDEO -o SALIDA --steps pasos.json` |
+| `video_reframe` | `vstudio reframe VIDEO --aspect 9:16 --start S --end E` |
+| `video_shotcut` | `vstudio shotcut VIDEO.path.json --title "..." --open` |
+| `video_autoedit` | `vstudio autoedit CARPETA --preset reels` |
+| `video_job_status` | `vstudio job-status ID` (sin ID: `vstudio jobs`) |
+| `video_job_cancel` | `vstudio job-cancel ID` |
+
+- Recipe: escribe los pasos en un archivo `pasos.json` (lista JSON) y pasalo con
+  `--steps pasos.json`. No pongas el JSON en la linea de comandos: las comillas se rompen.
+- La terminal del agente corta los comandos largos. `autoedit`, `reframe`, `quality` de
+  carpetas o varios clips, y cualquier video 4K o de mas de 1 minuto, SIEMPRE con
+  `vstudio job-start <sub> ...`: responde al instante con `job_id`. Luego
+  `vstudio job-status ID` cada 30-60 s hasta `done`/`failed`. Nunca relances un job `running`.
+- Rutas de Windows con espacios: siempre entre comillas.
 
 ## Si una herramienta falla
 - NO modifiques el codigo del plugin (`video_studio/`, `__init__.py`, skills) ni crees

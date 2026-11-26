@@ -10,7 +10,8 @@ USAGE = """vstudio - hermes-video-studio
   vstudio shotcut   VIDEO.path.json [--title ..] [--open]      (proyecto editable)
   vstudio autoedit  CARPETA [--preset reels] [--target 60] [--music m.mp3] [--vision]
   vstudio doctor
-  vstudio job-start <analyze|quality|edit|autoedit> ...   (segundo plano, responde al instante)
+  vstudio install-skills [--target opencode|claude|agents|all]   (skills para OpenCode/Claude Code)
+  vstudio job-start <analyze|quality|edit|autoedit|reframe> ...   (segundo plano, responde al instante)
   vstudio job-status ID | job-cancel ID | jobs
 
 Ayuda de cada uno: vstudio <sub> -h
@@ -45,6 +46,8 @@ def main(argv=None):
         from .reframe import main as m
     elif sub == "shotcut":
         from .shotcut import main as m
+    elif sub == "install-skills":
+        from .install_skills import main as m
     elif sub == "doctor":
         from .edit import main as m
         rest = ["doctor"]
@@ -56,7 +59,7 @@ def main(argv=None):
             return
         if sub == "job-start":
             if not rest or rest[0] not in ("analyze", "quality", "edit", "autoedit", "reframe"):
-                print(json.dumps({"ok": False, "error": "job-start <analyze|quality|edit|autoedit> ..."}))
+                print(json.dumps({"ok": False, "error": "job-start <analyze|quality|edit|autoedit|reframe> ..."}))
                 sys.exit(2)
             res = J.start(rest)
         elif sub == "job-status":
