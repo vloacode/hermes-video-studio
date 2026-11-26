@@ -11,7 +11,7 @@ Kit de video **100 % local** y plugin para Hermes Agent:
 | **edit** | 35 comandos de edicion (cortar, quitar silencios, 9:16, texto, subtitulos con Whisper, logos, musica con ducking, LUFS, exportar por plataforma, comprimir a N MB...) y `recipe` para encadenar pasos en una sola llamada. |
 | **reframe** | Pasa de horizontal a vertical. Por defecto **sigue el vuelo** (centrado y suave, ideal para dron); con `--subject` el modelo de vision persigue un sujeto. |
 | **shotcut** | Exporta a un proyecto de [Shotcut](https://shotcut.org) (open source) con el recorte como keyframes y el texto como capa editable, y lo abre para ajustar a mano. Instalar: `winget install Meltytech.Shotcut`. |
-| **autoedit** | Carpeta de clips -> video final: elige los mejores tramos, quita tomas repetidas, transiciones, titulo, musica, y deja `reporte.md`, `timeline.json` y `timeline.edl` (DaVinci/Premiere). |
+| **autoedit** | Carpeta de clips -> video final: divide los clips en escenas y usa una toma por escena (el mismo lugar grabado dos veces no se repite), corta sin cambios de direccion ni maniobras a medias, ajusta los cortes al ritmo de la musica, y deja `reporte.md` (con por que no uso cada clip), `timeline.json` y `timeline.edl` (DaVinci/Premiere). |
 
 ## 🔒 100 % IA local - probado en Intel Arc Pro B70
 

@@ -176,9 +176,11 @@ SCHEMAS = [
               "background": {"type": "boolean", "description": "true = correr en segundo plano y devolver job_id al instante (usa para videos largos/4K)"}},
              ["input", "steps"]), video_recipe),
     (_schema("video_autoedit",
-             "Carpeta de clips -> video final: mide calidad, elige los mejores tramos, quita "
-             "tomas repetidas, une con transiciones, titulo y musica, exporta y deja reporte.md, "
-             "timeline.json y timeline.edl. Puede tardar varios minutos.",
+             "Carpeta de clips -> video final: divide los clips en escenas, usa 1 tramo por "
+             "escena (sin repetir lugares entre clips), corta sin maniobras a medias, ajusta "
+             "los cortes al ritmo de la musica, une con transiciones, titulo y musica y deja "
+             "reporte.md (con por que no uso cada clip), timeline.json y timeline.edl. "
+             "Puede tardar varios minutos.",
              {"inputs": {**ARR, "description": "carpeta(s) o videos"},
               "args": {**ARR, "description": "ej: ['--preset','reels','--target','60',"
                                                  "'--music','m.mp3','--duck','--vision']"},

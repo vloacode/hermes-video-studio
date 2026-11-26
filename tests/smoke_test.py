@@ -38,6 +38,13 @@ def main():
     sh("-f", "lavfi", "-i", "testsrc=s=1280x720:d=8:r=30", "-c:v", "libx264", "-pix_fmt",
        "yuv420p", os.path.join(clips, "c_other.mp4"))
 
+    # copia casi igual (como una version estabilizada): autoedit debe usar solo una
+    sh("-i", good, "-vf", "scale=1300:-2,crop=1280:720,eq=brightness=0.03", "-c:v", "libx264",
+       "-pix_fmt", "yuv420p", os.path.join(clips, "d_dup.mp4"))
+    music = os.path.join(OUT, "beat120.wav")
+    sh("-f", "lavfi", "-i", "aevalsrc='0.8*sin(2*PI*900*t)*lt(mod(t-0.2\\,0.5)\\,0.03)':d=30:s=44100",
+       music)
+
     q = vs("quality", clips, "--json", "--window", "3")
     scores = {c["file"]: c for c in q["clips"]}
     assert scores["a_good.mp4"]["score"] > scores["b_blurry.mp4"]["score"], scores
@@ -53,8 +60,17 @@ def main():
 
     r = vs("autoedit", clips, "-o", os.path.join(OUT, "auto"), "--target", "6",
            "--max-target", "9", "--clip-max", "3", "--title", "Smoke", "--min-label",
-           "ACEPTABLE")
+           "ACEPTABLE", "--music", music)
     assert r["ok"] and r["clips_used"] >= 2 and r["height"] == 1920, r
+    used = " ".join(r["clips"])
+    assert not ("a_good" in used and "d_dup" in used), r  # la copia no se repite
+    assert abs(r.get("music_bpm", 0) - 120) < 2, r
+    with open(r["timeline"], encoding="utf-8") as fh:
+        tl = json.load(fh)
+    unit = tl["music_beat"]["cut_every"]
+    for k, c in enumerate(tl["clips"][1:-1], 1):  # cada corte cae en el beat
+        n = (c["out"] - c["in"] - tl["transition"]) / unit
+        assert abs(n - round(n)) < 0.02, (k, c, unit)
     for f in ("report", "timeline", "edl"):
         assert os.path.exists(r[f]), f
     print("autoedit OK")

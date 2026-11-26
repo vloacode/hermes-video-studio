@@ -42,8 +42,9 @@ def probe(path):
             "has_audio": any(s["codec_type"] == "audio" for s in d["streams"])}
 
 
-def gray_frames(path, fps, hwaccel=True, start=None, dur=None):
-    """Genera fotogramas en gris (AH x AW, uint8) a `fps` por segundo."""
+def gray_frames(path, fps, hwaccel=True, start=None, dur=None, chroma=False):
+    """Genera fotogramas en gris (AH x AW, uint8) a `fps` por segundo.
+    Con chroma=True genera (Y, U, V) en YUV420: Y es el mismo gris de siempre."""
     cmd = ["ffmpeg", "-v", "error"]
     if hwaccel:
         cmd += ["-hwaccel", "auto"]
@@ -51,16 +52,24 @@ def gray_frames(path, fps, hwaccel=True, start=None, dur=None):
         cmd += ["-ss", f"{start:.3f}"]
     if dur:
         cmd += ["-t", f"{dur:.3f}"]
-    cmd += ["-i", path, "-vf", f"fps={fps},scale={AW}:{AH},format=gray", "-an",
-            "-f", "rawvideo", "-pix_fmt", "gray", "-"]
+    fmt = "yuv420p" if chroma else "gray"
+    cmd += ["-i", path, "-vf", f"fps={fps},scale={AW}:{AH},format={fmt}", "-an",
+            "-f", "rawvideo", "-pix_fmt", fmt, "-"]
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     size = AW * AH
+    csize = (AW // 2) * (AH // 2)
     try:
         while True:
-            buf = p.stdout.read(size)
-            if len(buf) < size:
+            buf = p.stdout.read(size + (2 * csize if chroma else 0))
+            if len(buf) < size + (2 * csize if chroma else 0):
                 break
-            yield np.frombuffer(buf, np.uint8).reshape(AH, AW)
+            y = np.frombuffer(buf, np.uint8, size).reshape(AH, AW)
+            if chroma:
+                u = np.frombuffer(buf, np.uint8, csize, size).reshape(AH // 2, AW // 2)
+                v = np.frombuffer(buf, np.uint8, csize, size + csize).reshape(AH // 2, AW // 2)
+                yield y, u, v
+            else:
+                yield y
     finally:
         p.stdout.close()
         p.wait()
@@ -132,17 +141,30 @@ def small(f):
     return f.reshape(MH, 4, MW, 4).mean(axis=(1, 3)).astype(np.float32)
 
 
-def measure(path, fps=10, window=8.0, weights=None, hwaccel=True):
-    """Mide un clip. Devuelve metricas globales, puntaje y el mejor tramo de `window` s."""
+def measure(path, fps=10, window=8.0, weights=None, hwaccel=True, trace=False):
+    """Mide un clip. Devuelve metricas globales, puntaje y el mejor tramo de `window` s.
+    Con trace=True agrega "_trace" (arrays NumPy por fotograma: calidad, movimiento de
+    camara, cortes y firmas visuales cada 0.5 s) para elegir y cortar tramos."""
     weights = weights or WEIGHTS
     info = probe(path)
     rows, prev_s, prev_shift = [], None, None
-    for i, f in enumerate(gray_frames(path, fps, hwaccel)):
+    sig_every = max(1, int(round(fps / 2)))
+    sig_t, sig_c, sig_s = [], [], []
+    for i, f in enumerate(gray_frames(path, fps, hwaccel, chroma=trace)):
+        if trace:
+            f, fu, fv = f
+            if i % sig_every == 0:
+                from .scenes import frame_sig
+                hc, hs = frame_sig(f, fu, fv)
+                sig_t.append(i / fps)
+                sig_c.append(hc)
+                sig_s.append(hs)
         sv, ss = sharpness(f)
         mean, clip_frac, es = exposure(f)
         sd, cs = contrast(f)
         s = small(f)
         jerk, cut = None, False
+        dy = dx = 0.0
         if prev_s is not None:
             diff = float(np.abs(s - prev_s).mean())
             cut = diff > 45  # corte de escena: no cuenta como temblor
@@ -157,9 +179,10 @@ def measure(path, fps=10, window=8.0, weights=None, hwaccel=True):
             prev_shift = None if cut else (dy, dx)
         prev_s = s
         rows.append({"t": i / fps, "sharp_raw": sv, "sharp": ss, "luma": mean,
-                     "clipped": clip_frac, "exp": es, "std": sd, "con": cs, "jerk": jerk})
+                     "clipped": clip_frac, "exp": es, "std": sd, "con": cs, "jerk": jerk,
+                     "dx": dx if not cut else 0.0, "dy": dy if not cut else 0.0, "cut": cut})
     if not rows and hwaccel:
-        return measure(path, fps, window, weights, hwaccel=False)
+        return measure(path, fps, window, weights, hwaccel=False, trace=trace)
     if not rows:
         raise RuntimeError(f"No pude decodificar {path}")
 
@@ -212,7 +235,7 @@ def measure(path, fps=10, window=8.0, weights=None, hwaccel=True):
         issues.append("tembloroso")
     if m["contrast"] < 35:
         issues.append("plano/sin contraste")
-    return {"file": os.path.basename(path), "path": os.path.abspath(path),
+    out = {"file": os.path.basename(path), "path": os.path.abspath(path),
             "duration": round(info["duration"], 2),
             "resolution": f"{info['width']}x{info['height']}", "has_audio": info["has_audio"],
             "score": round(score, 1), "label": label(score), "metrics": m, "issues": issues,
@@ -220,6 +243,15 @@ def measure(path, fps=10, window=8.0, weights=None, hwaccel=True):
                              "score": round(bscore, 1)},
             "raw": {"laplacian_var": round(avg("sharp_raw"), 1), "luma": round(avg("luma"), 1),
                     "luma_std": round(avg("std"), 1), "shake_px": round(shake, 2)}}
+    if trace:
+        out["_trace"] = {
+            "fps": np.float32(fps), "per": per.astype(np.float32),
+            "dx": np.array([r["dx"] for r in rows], np.float32),
+            "dy": np.array([r["dy"] for r in rows], np.float32),
+            "cut": np.array([r["cut"] for r in rows], bool),
+            "sig_t": np.array(sig_t, np.float32), "sig_color": np.array(sig_c, np.float32),
+            "sig_struct": np.array(sig_s, np.float32)}
+    return out
 
 
 def list_videos(paths):
